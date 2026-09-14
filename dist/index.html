@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#0b1118" />
   <meta name="description" content="Siber güvenlik mülakat görevlerini güvenli bir firewall simülasyonunda adım adım çalış." />
+  <meta name="jobfinden-voice-backend" content="" />
   <title>Siber Güvenlik Mülakat Laboratuvarı</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230b1118'/%3E%3Cpath d='M32 9 50 16v14c0 12-7.4 20.8-18 25C21.4 50.8 14 42 14 30V16l18-7Z' fill='%2378e5c8'/%3E%3Cpath d='M32 19v24M22 31h20' stroke='%230b1118' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E" />
   <style>
@@ -481,6 +482,8 @@
       let voiceRecognition = null;
       let voiceSequence = [];
       let voiceSequenceIndex = 0;
+      let realtimeConnection = null;
+      const voiceBackendUrl = document.querySelector('meta[name="jobfinden-voice-backend"]')?.content.trim() || '';
       function setVoiceStatus(message, state='ready') {
         const status=document.getElementById('voiceCoachStatus'); const dot=document.getElementById('voiceCoachDot');
         if (status) status.textContent=message;
@@ -504,6 +507,27 @@
           {lang:'de-DE', text:question.questionDe},
           {lang:'tr-TR', text:`Cevabını Almanca ve kısa cümlelerle söyle. İpucu: ${question.coachTr}`}
         ];
+      }
+      async function connectOpenAiVoiceCoach(question) {
+        if (!voiceBackendUrl || !window.RTCPeerConnection || !navigator.mediaDevices?.getUserMedia) return false;
+        setVoiceStatus('Güvenli ses oturumu hazırlanıyor…','listening');
+        const sessionResponse=await fetch(`${voiceBackendUrl.replace(/\/$/,'')}/realtime/session`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:question.questionDe})});
+        const sessionData=await sessionResponse.json().catch(()=>({}));
+        if(!sessionResponse.ok) throw new Error(sessionData.error || 'voice_session_failed');
+        const clientSecret=sessionData.value || sessionData.client_secret?.value || sessionData.client_secret;
+        if(!clientSecret) throw new Error('voice_session_missing_secret');
+        if(realtimeConnection) realtimeConnection.close();
+        const peer=new RTCPeerConnection(); realtimeConnection=peer;
+        const audio=new Audio(); audio.autoplay=true; peer.ontrack=event=>{audio.srcObject=event.streams[0];};
+        const stream=await navigator.mediaDevices.getUserMedia({audio:true}); stream.getTracks().forEach(track=>peer.addTrack(track,stream));
+        const channel=peer.createDataChannel('oai-events');
+        channel.onmessage=event=>{ try { const data=JSON.parse(event.data); if(data.type==='response.audio_transcript.done' || data.type==='response.output_audio_transcript.done'){ const feedback=document.getElementById('voiceCoachFeedback'); if(feedback){feedback.hidden=false; feedback.textContent=`Koçun cevabı: ${data.transcript || ''}`;} setVoiceStatus('OpenAI koçu yanıtladı.','ready'); } } catch(e) {} };
+        channel.onopen=()=>{ channel.send(JSON.stringify({type:'conversation.item.create',item:{type:'message',role:'user',content:[{type:'input_text',text:`${question.questionDe} Soruyu Türkçe açıkla, ardından Almanca kısa cevap için beni yönlendir.`}]}})); channel.send(JSON.stringify({type:'response.create'})); setVoiceStatus('OpenAI koçu hazır; konuşabilirsin.','listening'); };
+        const offer=await peer.createOffer(); await peer.setLocalDescription(offer);
+        const answerResponse=await fetch('https://api.openai.com/v1/realtime/calls',{method:'POST',headers:{Authorization:`Bearer ${clientSecret}`,'Content-Type':'application/sdp'},body:offer.sdp});
+        if(!answerResponse.ok) throw new Error('realtime_connection_failed');
+        await peer.setRemoteDescription({type:'answer',sdp:await answerResponse.text()});
+        return true;
       }
       function localVoiceFeedback(text) {
         const clean=String(text||'').trim(); const lower=clean.toLowerCase();
@@ -535,10 +559,11 @@
         document.getElementById('voiceCoachStart').textContent=de?'Übung starten':'Dersi başlat'; document.getElementById('voiceCoachRepeat').textContent=de?'Noch einmal hören':'Tekrar dinle'; document.getElementById('voiceCoachListen').textContent=de?'Antwort aufnehmen':'Cevabımı dinle'; document.getElementById('voiceCoachStop').textContent=de?'Stoppen':'Durdur';
         document.getElementById('voiceCoachProvider').textContent=de?'Diese erste Version nutzt die Sprachfunktionen des Browsers. Für OpenAI braucht es einen separaten Server; der Schlüssel bleibt verborgen.':'Bu ilk sürüm tarayıcının yerleşik sesini kullanır. OpenAI bağlantısı için anahtarı koruyan ayrı bir sunucu gerekir; anahtar bu sayfaya konulmaz.';
         if (!status.textContent || status.textContent==='Dersi başlatmak için hazır.') setVoiceStatus(de?'Bereit zum Start.':'Dersi başlatmak için hazır.','ready');
-        document.getElementById('voiceCoachStart').onclick=()=>speakVoiceSequence(currentVoiceSequence());
+        const startLesson=async()=>{ if(voiceBackendUrl){ try{await connectOpenAiVoiceCoach(question); return;}catch(e){setVoiceStatus('OpenAI bağlantısı kurulamadı; tarayıcı sesiyle devam ediyorum.','error');} } speakVoiceSequence(currentVoiceSequence()); };
+        document.getElementById('voiceCoachStart').onclick=startLesson;
         document.getElementById('voiceCoachRepeat').onclick=()=>speakVoiceSequence(currentVoiceSequence());
-        document.getElementById('voiceCoachListen').onclick=startVoiceRecognition;
-        document.getElementById('voiceCoachStop').onclick=()=>{ if(window.speechSynthesis) window.speechSynthesis.cancel(); if(voiceRecognition) voiceRecognition.abort(); setVoiceStatus(de?'Gestoppt.':'Durduruldu.','ready'); };
+        document.getElementById('voiceCoachListen').onclick=async()=>{ if(voiceBackendUrl){ try{await connectOpenAiVoiceCoach(question); return;}catch(e){setVoiceStatus('OpenAI bağlantısı kurulamadı; yerel mikrofon moduna geçiyorum.','error');} } startVoiceRecognition(); };
+        document.getElementById('voiceCoachStop').onclick=()=>{ if(window.speechSynthesis) window.speechSynthesis.cancel(); if(voiceRecognition) voiceRecognition.abort(); if(realtimeConnection){realtimeConnection.close(); realtimeConnection=null;} setVoiceStatus(de?'Gestoppt.':'Durduruldu.','ready'); };
       }
       function renderInterview() {
         const panel=document.getElementById('view-interview'); if (!panel) return;
