@@ -267,6 +267,17 @@
     .interview-coach strong { color: var(--text); }
     .interview-hidden { color: var(--muted); font-size: 13px; }
     .portal-mode-note { margin-bottom: 14px; }
+    .voice-coach { margin-top: 12px; padding: 15px; border: 1px solid rgba(139,184,255,.28); border-radius: 11px; background: linear-gradient(135deg, rgba(139,184,255,.08), rgba(120,229,200,.04)); }
+    .voice-coach-head, .voice-coach-actions, .voice-coach-status { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+    .voice-coach h3 { margin: 0 0 6px; }
+    .voice-coach p { color: var(--muted); font-size: 13px; margin: 0; }
+    .voice-coach-status { justify-content: flex-start; margin-top: 12px; color: #cad9ec; font-size: 12px; }
+    .voice-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); box-shadow: 0 0 0 4px rgba(139,184,255,.08); }
+    .voice-dot.ready { background: var(--teal); }
+    .voice-dot.listening { background: var(--amber); box-shadow: 0 0 0 4px rgba(255,195,106,.12); }
+    .voice-dot.error { background: var(--red); box-shadow: 0 0 0 4px rgba(255,143,135,.12); }
+    .voice-feedback { margin-top: 11px; padding: 10px 12px; border-left: 3px solid var(--teal); border-radius: 0 8px 8px 0; background: rgba(120,229,200,.06); color: #cbe8df; font-size: 13px; }
+    .voice-provider { margin-top: 10px; color: var(--muted); font-size: 11px; }
     .toast { position: fixed; right: 24px; bottom: 24px; max-width: min(390px, calc(100vw - 48px)); z-index: 20; padding: 13px 15px; border: 1px solid rgba(120,229,200,.4); border-radius: 10px; background: #12231f; color: var(--teal); box-shadow: var(--shadow); opacity: 0; transform: translateY(12px); pointer-events: none; transition: .22s ease; font-size: 13px; }
     .toast.show { opacity: 1; transform: translateY(0); }
     .confetti { color: var(--amber); }
@@ -356,6 +367,13 @@
             </aside>
           </div>
           <div class="interview-coach" id="interviewCoach"><h3>Türkçe koçluk</h3><p>Önce sorunun ne istediğini anlayacağız. Sonra kısa bir Almanca cevap kuracağız. Takılırsan birlikte yavaşlarız.</p></div>
+          <section class="voice-coach" id="voiceCoachPanel" aria-live="polite">
+            <div class="voice-coach-head"><div><p class="eyebrow" id="voiceCoachEyebrow">Bağımsız sesli eğitim</p><h3 id="voiceCoachTitle">Canlı Sesli Koç</h3><p id="voiceCoachDescription">Tarayıcının ses özelliğiyle soruyu dinle, Almanca cevap ver ve basit Türkçe geri bildirim al.</p></div><span class="status-badge" id="voiceCoachAvailability">Hazır</span></div>
+            <div class="voice-coach-status"><span class="voice-dot ready" id="voiceCoachDot"></span><span id="voiceCoachStatus">Dersi başlatmak için hazır.</span></div>
+            <div class="voice-coach-actions" style="margin-top:11px"><div class="coach-actions"><button class="button small primary" id="voiceCoachStart">Dersi başlat</button><button class="button small" id="voiceCoachRepeat">Tekrar dinle</button><button class="button small ghost" id="voiceCoachListen">Cevabımı dinle</button><button class="button small ghost" id="voiceCoachStop">Durdur</button></div></div>
+            <div class="voice-feedback" id="voiceCoachFeedback" hidden></div>
+            <p class="voice-provider" id="voiceCoachProvider">Bu ilk sürüm tarayıcının yerleşik sesini kullanır. OpenAI bağlantısı için anahtarı koruyan ayrı bir sunucu gerekir; anahtar bu sayfaya konulmaz.</p>
+          </section>
         </section>
       </section>
 
@@ -460,6 +478,68 @@
       function saveInterviewState() { try { localStorage.setItem(interviewStorageKey, JSON.stringify(interviewState)); } catch (e) {} }
       function escapeHtml(value) { return String(value || '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[char])); }
       function interviewDayNumber() { return Math.min(30, (interviewState.completedDays || []).length + 1); }
+      let voiceRecognition = null;
+      let voiceSequence = [];
+      let voiceSequenceIndex = 0;
+      function setVoiceStatus(message, state='ready') {
+        const status=document.getElementById('voiceCoachStatus'); const dot=document.getElementById('voiceCoachDot');
+        if (status) status.textContent=message;
+        if (dot) dot.className=`voice-dot ${state}`;
+      }
+      function speakVoiceSequence(sequence) {
+        if (!('speechSynthesis' in window)) { setVoiceStatus('Bu tarayıcı sesli okumayı desteklemiyor.', 'error'); return; }
+        window.speechSynthesis.cancel(); voiceSequence=sequence; voiceSequenceIndex=0; setVoiceStatus('Sesli ders başlatılıyor…','listening');
+        const next=()=>{
+          if (voiceSequenceIndex>=voiceSequence.length) { setVoiceStatus('Dinleme tamamlandı. Şimdi cevabını Almanca söyleyebilirsin.', 'ready'); return; }
+          const part=voiceSequence[voiceSequenceIndex++]; const utterance=new SpeechSynthesisUtterance(part.text); utterance.lang=part.lang; utterance.rate=0.78; utterance.pitch=1;
+          const voices=window.speechSynthesis.getVoices(); const preferred=voices.find(v=>v.lang.toLowerCase().startsWith(part.lang.slice(0,2).toLowerCase())); if(preferred) utterance.voice=preferred;
+          utterance.onstart=()=>setVoiceStatus(part.lang==='de-DE'?'Almanca soru okunuyor…':'Türkçe açıklama okunuyor…','listening'); utterance.onend=next; utterance.onerror=()=>setVoiceStatus('Sesli okuma durdu. Tekrar dinleyebilirsin.','error'); window.speechSynthesis.speak(utterance);
+        };
+        next();
+      }
+      function currentVoiceSequence() {
+        const question=interviewQuestionBank[interviewState.questionIndex] || interviewQuestionBank[0];
+        return [
+          {lang:'tr-TR', text:`Şimdi yavaşça çalışıyoruz. Soru şu: ${question.questionTr}`},
+          {lang:'de-DE', text:question.questionDe},
+          {lang:'tr-TR', text:`Cevabını Almanca ve kısa cümlelerle söyle. İpucu: ${question.coachTr}`}
+        ];
+      }
+      function localVoiceFeedback(text) {
+        const clean=String(text||'').trim(); const lower=clean.toLowerCase();
+        if (!clean) return 'Henüz cevap duymadım. Mikrofon düğmesine basıp Almanca cevabını söyle.';
+        if (clean.split(/\s+/).length<4) return 'Başlangıç iyi. Cevabına bir neden veya kısa bir örnek daha ekleyebilirsin.';
+        const question=interviewQuestionBank[interviewState.questionIndex] || interviewQuestionBank[0];
+        const checks={intro:['ich','interess'],motivation:['weil'],experience:['erfahrung','prakt'],strength:['stärke','ruhig','systematisch'],problem:['zuerst','prüf','problem'],technical:['https','tcp','443']};
+        const needed=checks[question.id]||[]; const hit=needed.some(word=>lower.includes(word));
+        return hit?'Cevabında soruyla ilgili önemli bir kelime var. Şimdi aynı cevabı biraz daha sakin ve net tekrar et.':'Cümle kurmaya başladın. Bir sonraki tekrarda sorunun ana kelimesini de eklemeyi dene.';
+      }
+      function startVoiceRecognition() {
+        const Recognition=window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!Recognition) { setVoiceStatus('Bu tarayıcı mikrofonla konuşmayı desteklemiyor. Chrome veya Edge kullanabilirsin.','error'); return; }
+        if (voiceRecognition) voiceRecognition.abort();
+        voiceRecognition=new Recognition(); voiceRecognition.lang='de-DE'; voiceRecognition.interimResults=false; voiceRecognition.continuous=false;
+        voiceRecognition.onstart=()=>setVoiceStatus('Dinliyorum… Almanca cevabını söyle.','listening');
+        voiceRecognition.onerror=event=>setVoiceStatus(event.error==='not-allowed'?'Mikrofon izni verilmedi. Tarayıcı izin penceresinden mikrofonu açabilirsin.':'Konuşma alınamadı. Tekrar deneyebilirsin.','error');
+        voiceRecognition.onresult=event=>{ const text=event.results[0][0].transcript; const answer=document.getElementById('interviewAnswer'); if(answer){answer.value=text; interviewState.answers[interviewQuestionBank[interviewState.questionIndex].id]=text; saveInterviewState();} const feedback=document.getElementById('voiceCoachFeedback'); if(feedback){feedback.hidden=false; feedback.textContent=`Duyduğum cevap: “${text}” — ${localVoiceFeedback(text)}`;} setVoiceStatus('Cevabın alındı. Geri bildirimi ekranda görebilirsin.','ready'); };
+        voiceRecognition.onend=()=>{ if(document.getElementById('voiceCoachDot')?.classList.contains('listening')) setVoiceStatus('Dinleme tamamlandı.','ready'); };
+        try { voiceRecognition.start(); } catch (e) { setVoiceStatus('Mikrofon başlatılamadı. Biraz sonra tekrar dene.','error'); }
+      }
+      function renderVoiceCoach(question) {
+        const de=locale==='de'; const availability=document.getElementById('voiceCoachAvailability'); const status=document.getElementById('voiceCoachStatus');
+        if (!availability || !status) return;
+        document.getElementById('voiceCoachEyebrow').textContent=de?'Unabhängige Sprechübung':'Bağımsız sesli eğitim';
+        document.getElementById('voiceCoachTitle').textContent=de?'Live-Sprachcoach':'Canlı Sesli Koç';
+        document.getElementById('voiceCoachDescription').textContent=de?'Höre die Frage, antworte auf Deutsch und erhalte eine einfache Rückmeldung auf Türkisch.':'Tarayıcının ses özelliğiyle soruyu dinle, Almanca cevap ver ve basit Türkçe geri bildirim al.';
+        availability.textContent=de?'Bereit':'Hazır';
+        document.getElementById('voiceCoachStart').textContent=de?'Übung starten':'Dersi başlat'; document.getElementById('voiceCoachRepeat').textContent=de?'Noch einmal hören':'Tekrar dinle'; document.getElementById('voiceCoachListen').textContent=de?'Antwort aufnehmen':'Cevabımı dinle'; document.getElementById('voiceCoachStop').textContent=de?'Stoppen':'Durdur';
+        document.getElementById('voiceCoachProvider').textContent=de?'Diese erste Version nutzt die Sprachfunktionen des Browsers. Für OpenAI braucht es einen separaten Server; der Schlüssel bleibt verborgen.':'Bu ilk sürüm tarayıcının yerleşik sesini kullanır. OpenAI bağlantısı için anahtarı koruyan ayrı bir sunucu gerekir; anahtar bu sayfaya konulmaz.';
+        if (!status.textContent || status.textContent==='Dersi başlatmak için hazır.') setVoiceStatus(de?'Bereit zum Start.':'Dersi başlatmak için hazır.','ready');
+        document.getElementById('voiceCoachStart').onclick=()=>speakVoiceSequence(currentVoiceSequence());
+        document.getElementById('voiceCoachRepeat').onclick=()=>speakVoiceSequence(currentVoiceSequence());
+        document.getElementById('voiceCoachListen').onclick=startVoiceRecognition;
+        document.getElementById('voiceCoachStop').onclick=()=>{ if(window.speechSynthesis) window.speechSynthesis.cancel(); if(voiceRecognition) voiceRecognition.abort(); setVoiceStatus(de?'Gestoppt.':'Durduruldu.','ready'); };
+      }
       function renderInterview() {
         const panel=document.getElementById('view-interview'); if (!panel) return;
         const question=interviewQuestionBank[interviewState.questionIndex] || interviewQuestionBank[0]; const de=locale==='de'; const learning=studyMode==='learning';
@@ -496,6 +576,7 @@
         document.getElementById('interviewPrev').onclick=()=>{ if(interviewState.questionIndex>0){ interviewState.questionIndex--; interviewState.revealed=false; saveInterviewState(); renderInterview(); } };
         document.getElementById('interviewNext').onclick=()=>{ interviewState.answers[question.id]=answer.value; interviewState.answered[question.id]=true; interviewState.revealed=false; if(interviewState.questionIndex<interviewQuestionBank.length-1) interviewState.questionIndex++; saveInterviewState(); renderInterview(); showToast(de?'Antwort gespeichert.':'Cevap kaydedildi.'); };
         document.getElementById('interviewCompleteDay').onclick=()=>{ const nextDay=interviewDayNumber(); if(!interviewState.completedDays.includes(nextDay) && nextDay<=30){ interviewState.completedDays.push(nextDay); saveInterviewState(); renderInterview(); showToast(de?`Tag ${nextDay} abgeschlossen.`:`${nextDay}. gün tamamlandı.`); } };
+        renderVoiceCoach(question);
       }
       const scenarioSeed = [
         { id:'s01', number:1, title:'LAN → DMZ erişim kuralı', category:'Firewall', difficulty:'Kolay', duration:'10 dk', description:'Bir web sunucusuna yalnızca HTTPS erişimi aç.', steps:['LAN ve DMZ ağlarını doğrula','Default deny politikasını kontrol et','LAN → DMZ TCP 443 ALLOW kuralı oluştur','HTTPS trafiğini test et ve logu doğrula'] },
