@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0b1118" />
+  <meta name="description" content="Siber güvenlik mülakat görevlerini güvenli bir firewall simülasyonunda adım adım çalış." />
+  <title>Siber Güvenlik Mülakat Laboratuvarı</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230b1118'/%3E%3Cpath d='M32 9 50 16v14c0 12-7.4 20.8-18 25C21.4 50.8 14 42 14 30V16l18-7Z' fill='%2378e5c8'/%3E%3Cpath d='M32 19v24M22 31h20' stroke='%230b1118' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E" />
+  <style>
+    :root {
+      --bg: #080d13;
+      --surface: #101822;
+      --surface-2: #151f2b;
+      --surface-3: #1b2835;
+      --line: #2a3a4a;
+      --text: #eef5f7;
+      --muted: #91a3af;
+      --teal: #78e5c8;
+      --teal-dim: #1d4f4b;
+      --amber: #ffc36a;
+      --amber-dim: #4f3b22;
+      --red: #ff8f87;
+      --red-dim: #4d252a;
+      --blue: #8bb8ff;
+      --shadow: 0 20px 60px rgba(0,0,0,.28);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color-scheme: dark;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-width: 320px;
+      background: radial-gradient(circle at 20% -10%, #162b39 0, transparent 34%), var(--bg);
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.45;
+    }
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+    .app-shell { min-height: 100vh; }
+    .topbar {
+      height: 76px; display: flex; align-items: center; justify-content: space-between;
+      gap: 20px; padding: 0 28px; border-bottom: 1px solid rgba(120,229,200,.14);
+      background: rgba(8,13,19,.8); backdrop-filter: blur(16px); position: sticky; top: 0; z-index: 5;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .brand-mark { width: 38px; height: 38px; border: 1px solid rgba(120,229,200,.55); border-radius: 12px; display: grid; place-items: center; color: var(--teal); background: rgba(120,229,200,.08); }
+    .brand-mark svg { width: 21px; height: 21px; }
+    .brand-copy { min-width: 0; }
+    .brand-title { font-weight: 750; letter-spacing: -.01em; white-space: nowrap; }
+    .brand-subtitle { color: var(--muted); font-size: 12px; white-space: nowrap; }
+    .top-actions { display: flex; align-items: center; gap: 10px; }
+    .sim-badge, .status-badge, .pill { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--line); border-radius: 999px; padding: 7px 11px; color: var(--muted); font-size: 12px; white-space: nowrap; }
+    .sim-badge { color: var(--amber); border-color: rgba(255,195,106,.32); background: rgba(255,195,106,.07); }
+    .sim-badge::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--amber); box-shadow: 0 0 12px var(--amber); }
+    .button { border: 1px solid var(--line); border-radius: 9px; padding: 9px 13px; background: var(--surface-2); color: var(--text); transition: .18s ease; }
+    .button:hover { border-color: #496275; background: var(--surface-3); transform: translateY(-1px); }
+    .button.primary { background: var(--teal); color: #08221f; border-color: var(--teal); font-weight: 750; }
+    .button.primary:hover { background: #9af0da; border-color: #9af0da; }
+    .button.ghost { background: transparent; }
+    .button.danger { color: var(--red); border-color: rgba(255,143,135,.35); background: rgba(255,143,135,.06); }
+    .button.small { padding: 7px 10px; font-size: 13px; }
+    .layout { display: grid; grid-template-columns: 272px minmax(560px, 1fr) 330px; gap: 18px; max-width: 1600px; margin: 0 auto; padding: 24px 28px 44px; }
+    .panel { background: linear-gradient(145deg, rgba(21,31,43,.97), rgba(13,21,30,.97)); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); }
+    .mission { padding: 20px; align-self: start; position: sticky; top: 100px; }
+    .eyebrow { margin: 0 0 7px; color: var(--teal); font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { font-size: clamp(21px, 2.4vw, 31px); line-height: 1.08; letter-spacing: -.035em; margin-bottom: 10px; }
+    h2 { font-size: 18px; letter-spacing: -.02em; margin-bottom: 8px; }
+    h3 { font-size: 14px; margin-bottom: 6px; }
+    .muted { color: var(--muted); }
+    .intro { color: var(--muted); font-size: 13px; margin-bottom: 18px; }
+    .progress-wrap { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 14px 0; margin: 15px 0; }
+    .progress-row { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; color: var(--muted); margin-bottom: 9px; }
+    .progress-row strong { color: var(--text); }
+    .progress { height: 7px; background: #0b1118; border-radius: 99px; overflow: hidden; border: 1px solid #20303d; }
+    .progress > span { display: block; height: 100%; width: 16%; background: linear-gradient(90deg, var(--teal), var(--blue)); border-radius: inherit; transition: width .3s ease; }
+    .task-list { display: grid; gap: 8px; }
+    .task { display: grid; grid-template-columns: 22px 1fr; gap: 9px; align-items: start; padding: 9px 8px; border-radius: 9px; color: var(--muted); font-size: 13px; }
+    .task.active { background: rgba(120,229,200,.08); color: var(--text); }
+    .task.done { color: var(--teal); }
+    .task-number { width: 20px; height: 20px; display: grid; place-items: center; border-radius: 50%; border: 1px solid #465b6a; font-size: 11px; color: inherit; }
+    .task.done .task-number { border-color: var(--teal); background: var(--teal); color: #08221f; }
+    .task.active .task-number { border-color: var(--teal); }
+    .safety-note { margin-top: 18px; padding: 11px; border-radius: 10px; color: #b8c8d0; background: rgba(139,184,255,.06); border: 1px solid rgba(139,184,255,.2); font-size: 12px; }
+    .workspace { min-width: 0; }
+    .workspace-head { padding: 6px 2px 18px; display: flex; justify-content: space-between; gap: 16px; align-items: end; }
+    .workspace-head p { margin-bottom: 0; color: var(--muted); font-size: 13px; max-width: 600px; }
+    .workspace-actions { display: flex; gap: 9px; flex-wrap: wrap; justify-content: flex-end; }
+    .firewall { overflow: hidden; }
+    .firewall-bar { min-height: 64px; padding: 14px 18px; display: flex; justify-content: space-between; align-items: center; gap: 14px; background: #111c27; border-bottom: 1px solid var(--line); }
+    .device-title { display: flex; align-items: center; gap: 11px; }
+    .device-icon { width: 35px; height: 35px; display: grid; place-items: center; border: 1px solid #36566a; border-radius: 10px; color: var(--blue); background: rgba(139,184,255,.08); }
+    .device-title strong { font-size: 14px; }
+    .device-title span { display: block; color: var(--muted); font-size: 11px; }
+    .device-status { color: var(--teal); font-size: 12px; display: flex; align-items: center; gap: 7px; }
+    .device-status::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--teal); box-shadow: 0 0 10px var(--teal); }
+    .firewall-nav { display: flex; gap: 4px; padding: 10px 14px; border-bottom: 1px solid var(--line); overflow-x: auto; background: rgba(11,17,24,.4); }
+    .nav-tab { padding: 8px 10px; border: 1px solid transparent; border-radius: 7px; background: transparent; color: var(--muted); font-size: 12px; white-space: nowrap; }
+    .nav-tab:hover { color: var(--text); background: var(--surface-3); }
+    .nav-tab.active { color: var(--teal); background: rgba(120,229,200,.08); border-color: rgba(120,229,200,.2); }
+    .firewall-content { padding: 18px; min-height: 610px; }
+    .view { display: none; }
+    .view.active { display: block; animation: appear .2s ease; }
+    @keyframes appear { from { opacity: .3; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+    .view-heading { display: flex; justify-content: space-between; align-items: start; gap: 16px; margin-bottom: 15px; }
+    .view-heading p { color: var(--muted); font-size: 13px; margin-bottom: 0; }
+    .cards { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; }
+    .stat-card, .interface-card, .mini-card { padding: 14px; border: 1px solid var(--line); border-radius: 11px; background: rgba(16,24,34,.68); }
+    .stat-card .label { color: var(--muted); font-size: 11px; }
+    .stat-card .value { font-size: 22px; font-weight: 750; letter-spacing: -.04em; margin-top: 6px; }
+    .stat-card .detail { color: var(--muted); font-size: 11px; margin-top: 4px; }
+    .interface-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; margin-top: 14px; }
+    .interface-card { position: relative; overflow: hidden; }
+    .interface-card::after { content: ""; position: absolute; right: -18px; top: -18px; width: 74px; height: 74px; border-radius: 50%; background: rgba(120,229,200,.06); }
+    .interface-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 13px; }
+    .interface-name { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+    .interface-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--teal); }
+    .interface-card p { margin-bottom: 5px; font-size: 12px; color: var(--muted); }
+    .interface-card strong { color: var(--text); font-weight: 600; }
+    .hint-banner { padding: 12px 13px; margin-bottom: 15px; border-left: 3px solid var(--amber); background: rgba(255,195,106,.07); color: #e9d3a7; font-size: 13px; border-radius: 0 8px 8px 0; }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
+    table { width: 100%; border-collapse: collapse; min-width: 650px; }
+    th, td { text-align: left; padding: 12px 13px; border-bottom: 1px solid rgba(42,58,74,.7); font-size: 12px; vertical-align: middle; }
+    th { color: var(--muted); font-size: 11px; font-weight: 650; background: rgba(11,17,24,.55); }
+    tr:last-child td { border-bottom: 0; }
+    .rule-id { color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .rule-state { display: inline-flex; gap: 6px; align-items: center; color: var(--teal); }
+    .rule-state.off { color: var(--muted); }
+    .rule-state::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+    .action-allow { color: var(--teal); }
+    .action-deny { color: var(--red); }
+    .form-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+    .field { display: grid; gap: 6px; }
+    .field.full { grid-column: 1/-1; }
+    label { color: #c8d4da; font-size: 12px; }
+    input, select, textarea { width: 100%; color: var(--text); background: #0c141d; border: 1px solid #344857; border-radius: 8px; padding: 10px 11px; }
+    input::placeholder, textarea::placeholder { color: #637683; }
+    textarea { min-height: 75px; resize: vertical; }
+    .check-row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+    .check { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; color: var(--muted); }
+    .check input { width: auto; accent-color: var(--teal); }
+    .form-footer { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 15px; flex-wrap: wrap; }
+    .form-footer .helper { color: var(--muted); font-size: 11px; }
+    .traffic-test { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }
+    .traffic-actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 11px 0; }
+    .traffic-result { min-height: 70px; display: flex; gap: 11px; align-items: center; padding: 12px; border: 1px solid var(--line); border-radius: 9px; background: rgba(8,13,19,.4); color: var(--muted); font-size: 13px; }
+    .traffic-result.success { border-color: rgba(120,229,200,.44); background: rgba(120,229,200,.06); color: var(--teal); }
+    .traffic-result.blocked { border-color: rgba(255,143,135,.38); background: rgba(255,143,135,.05); color: var(--red); }
+    .result-icon { width: 28px; height: 28px; display: grid; place-items: center; border: 1px solid currentColor; border-radius: 50%; font-weight: 800; }
+    .log-list { display: grid; gap: 8px; }
+    .log-row { display: grid; grid-template-columns: 86px 64px 1fr auto; gap: 12px; align-items: center; padding: 11px 12px; border: 1px solid var(--line); border-radius: 9px; background: rgba(8,13,19,.35); font-size: 12px; }
+    .log-time, .log-meta { color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; }
+    .log-allow { color: var(--teal); font-weight: 700; }
+    .log-deny { color: var(--red); font-weight: 700; }
+    .empty { padding: 30px 16px; text-align: center; color: var(--muted); border: 1px dashed #3c5060; border-radius: 10px; }
+    .coach { align-self: start; display: grid; gap: 14px; position: sticky; top: 100px; }
+    .coach-card { padding: 17px; }
+    .coach-card h2 { display: flex; align-items: center; gap: 8px; }
+    .coach-card h2::before { content: "✦"; color: var(--amber); font-size: 15px; }
+    .coach-copy { color: var(--muted); font-size: 13px; }
+    .coach-copy strong { color: var(--text); font-weight: 650; }
+    .coach-divider { border: 0; border-top: 1px solid var(--line); margin: 14px 0; }
+    .checkpoint { display: flex; gap: 10px; align-items: start; padding: 10px; border: 1px solid rgba(120,229,200,.25); border-radius: 10px; background: rgba(120,229,200,.06); }
+    .checkpoint-icon { color: var(--teal); font-size: 18px; line-height: 1.1; }
+    .checkpoint strong { display: block; font-size: 13px; margin-bottom: 2px; }
+    .checkpoint span { color: var(--muted); font-size: 12px; }
+    .coach-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .script { padding: 12px; border-left: 2px solid var(--blue); background: rgba(139,184,255,.06); border-radius: 0 9px 9px 0; color: #cad9ec; font-size: 12px; }
+    .next-scenarios { display: grid; gap: 7px; }
+    .scenario-item { display: flex; justify-content: space-between; align-items: center; padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; color: var(--muted); font-size: 12px; }
+    .scenario-item span:last-child { color: #627784; font-size: 11px; }
+    .toast { position: fixed; right: 24px; bottom: 24px; max-width: min(390px, calc(100vw - 48px)); z-index: 20; padding: 13px 15px; border: 1px solid rgba(120,229,200,.4); border-radius: 10px; background: #12231f; color: var(--teal); box-shadow: var(--shadow); opacity: 0; transform: translateY(12px); pointer-events: none; transition: .22s ease; font-size: 13px; }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .confetti { color: var(--amber); }
+    @media (max-width: 1240px) { .layout { grid-template-columns: 235px minmax(0,1fr); } .coach { grid-column: 1/-1; position: static; grid-template-columns: repeat(2,minmax(0,1fr)); } .coach-card:last-child { grid-column: 1/-1; } }
+    @media (max-width: 820px) { .topbar { padding: 0 16px; height: 68px; } .top-actions .sim-badge { display: none; } .layout { display: block; padding: 18px 14px 30px; } .mission, .coach { position: static; margin-bottom: 15px; } .coach { display: grid; grid-template-columns: 1fr; } .coach-card:last-child { grid-column: auto; } .workspace-head { display: block; } .workspace-actions { justify-content: flex-start; margin-top: 14px; } .cards, .interface-grid { grid-template-columns: 1fr; } .firewall-content { padding: 14px; min-height: 540px; } .form-grid { grid-template-columns: 1fr; } .field.full { grid-column: auto; } .log-row { grid-template-columns: 1fr 1fr; gap: 6px; } .log-row > :nth-child(3) { grid-column: 1/-1; } }
+    @media (max-width: 460px) { .brand-subtitle { display: none; } .brand-title { font-size: 13px; } .workspace-head h1 { font-size: 24px; } .firewall-bar { align-items: flex-start; flex-direction: column; } }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3.2 19 6v5.2c0 4.7-2.8 7.9-7 9.7-4.2-1.8-7-5-7-9.7V6l7-2.8Z"/><path d="M12 8v8M8 12h8"/></svg>
+        </div>
+        <div class="brand-copy"><div class="brand-title">Mülakat Hazırlanma Portalı</div><div class="brand-subtitle">Siber güvenlik çalışma alanı</div></div>
+      </div>
+      <div class="top-actions"><span class="sim-badge">Güvenli simülasyon</span><button class="button small ghost" id="resetTop">Sıfırla</button></div>
+    </header>
+
+    <main class="layout">
+      <aside class="panel mission" aria-label="Görev akışı">
+        <p class="eyebrow">Senaryo 01 / Firewall</p>
+        <h2>LAN → DMZ erişim kuralı</h2>
+        <p class="intro">Bir web sunucusuna yalnızca HTTPS erişimine izin ver. Her adımı sen yap; sistem sonucu gösterecek.</p>
+        <div class="progress-wrap"><div class="progress-row"><span>İlerleme</span><strong id="progressText">0 / 6</strong></div><div class="progress"><span id="progressBar"></span></div></div>
+        <div class="task-list" id="taskList"></div>
+        <div class="safety-note"><strong>Bu bir simülasyondur.</strong><br />Gerçek cihaza, ağa veya internete hiçbir işlem gönderilmez. Buradaki değişiklikler yalnızca bu sayfada kalır.</div>
+      </aside>
+
+      <section class="workspace" aria-label="Laboratuvar çalışma alanı">
+        <div class="workspace-head"><div><p class="eyebrow">Pratik laboratuvarı</p><h1>İlk firewall görevini çöz</h1><p>Önce ekrana alış, sonra küçük bir değişiklik yap, trafiği test et ve logdan kanıtla.</p></div><div class="workspace-actions"><button class="button small" id="hintBtn">İpucu göster</button><button class="button small danger" id="resetBtn">Senaryoyu sıfırla</button></div></div>
+        <section class="panel firewall" aria-label="Firewall simülasyonu">
+          <div class="firewall-bar"><div class="device-title"><div class="device-icon">⌁</div><div><strong>FW-TRAINING-01</strong><span>Firewall / test ortamı</span></div></div><div class="device-status">Simülasyon aktif</div></div>
+          <nav class="firewall-nav" aria-label="Firewall bölümleri">
+            <button class="nav-tab active" data-view="overview">Genel bakış</button><button class="nav-tab" data-view="interfaces">Arayüzler</button><button class="nav-tab" data-view="rules">Kurallar</button><button class="nav-tab" data-view="logs">Loglar</button><button class="nav-tab" data-view="config">Config yedeği</button>
+          </nav>
+          <div class="firewall-content">
+            <div class="view active" id="view-overview">
+              <div class="view-heading"><div><h2>Durum özeti</h2><p>Test cihazını tanımak için önce arayüzleri ve mevcut politikayı incele.</p></div><span class="status-badge">● Çalışıyor</span></div>
+              <div class="cards"><div class="stat-card"><div class="label">Arayüz</div><div class="value">3</div><div class="detail">WAN · LAN · DMZ</div></div><div class="stat-card"><div class="label">Aktif kural</div><div class="value" id="ruleCount">1</div><div class="detail">Varsayılan politika dahil</div></div><div class="stat-card"><div class="label">Son test</div><div class="value" id="lastTest">—</div><div class="detail" id="lastTestDetail">Henüz trafik üretilmedi</div></div></div>
+              <div class="hint-banner" style="margin-top:16px"><strong>Görev:</strong> LAN ağındaki istemcinin DMZ’deki web sunucusuna TCP 443 ile ulaşmasına izin ver; diğer trafiği açma.</div>
+              <div class="interface-grid"><div class="interface-card"><div class="interface-head"><div class="interface-name"><span class="interface-dot"></span>LAN</div><span class="pill">up</span></div><p>Ağ <strong>192.168.10.0/24</strong></p><p>Rol <strong>İstemciler</strong></p></div><div class="interface-card"><div class="interface-head"><div class="interface-name"><span class="interface-dot"></span>DMZ</div><span class="pill">up</span></div><p>Ağ <strong>192.168.20.0/24</strong></p><p>Rol <strong>Web sunucusu</strong></p></div><div class="interface-card"><div class="interface-head"><div class="interface-name"><span class="interface-dot"></span>WAN</div><span class="pill">up</span></div><p>Adres <strong>DHCP</strong></p><p>Rol <strong>Dış bağlantı</strong></p></div></div>
+            </div>
+
+            <div class="view" id="view-interfaces"><div class="view-heading"><div><h2>Arayüzler ve ağlar</h2><p>Bir kural yazmadan önce kaynak ve hedef bölgelerini doğrula.</p></div></div><div class="hint-banner">Kaynak <strong>LAN</strong>, hedef <strong>DMZ</strong>. Bu iki ağın adreslerini kural formunda kullanacaksın.</div><div class="interface-grid"><div class="interface-card"><div class="interface-head"><div class="interface-name"><span class="interface-dot"></span>LAN / em0</div><span class="pill">İç ağ</span></div><p>IPv4 <strong>192.168.10.1/24</strong></p><p>DHCP <strong>10–200</strong></p><p>Güven seviyesi <strong>trusted</strong></p></div><div class="interface-card"><div class="interface-head"><div class="interface-name"><span class="interface-dot"></span>DMZ / em1</div><span class="pill">Sunucu</span></div><p>IPv4 <strong>192.168.20.1/24</strong></p><p>Sunucu <strong>192.168.20.10</strong></p><p>Güven seviyesi <strong>restricted</strong></p></div><div class="interface-card"><div class="interface-head"><div class="interface-name"><span class="interface-dot"></span>WAN / em2</div><span class="pill">Dış</span></div><p>IPv4 <strong>DHCP</strong></p><p>Gateway <strong>upstream</strong></p><p>Güven seviyesi <strong>untrusted</strong></p></div></div></div>
+
+            <div class="view" id="view-rules"><div class="view-heading"><div><h2>Firewall kuralları</h2><p>Yukarıdan aşağıya değerlendirilir; ilk eşleşen kural uygulanır.</p></div><span class="status-badge" id="policyBadge">Default deny</span></div><div class="hint-banner">İzin kuralı için hedef port <strong>443 / HTTPS</strong> ve loglama açık olmalı. Kaydetmeden önce açıklamanı da düşün.</div><div class="table-wrap"><table><thead><tr><th>ID</th><th>Durum</th><th>Kaynak</th><th>Hedef</th><th>Protokol / port</th><th>Aksiyon</th><th>İşlem</th></tr></thead><tbody id="rulesBody"></tbody></table></div><div class="form-card" style="margin-top:20px"><h3>Yeni kural oluştur</h3><div class="form-grid"><div class="field"><label for="source">Kaynak ağ</label><select id="source"><option value="LAN">LAN — 192.168.10.0/24</option><option value="DMZ">DMZ — 192.168.20.0/24</option><option value="WAN">WAN — dış ağ</option></select></div><div class="field"><label for="destination">Hedef ağ</label><select id="destination"><option value="DMZ">DMZ — 192.168.20.0/24</option><option value="LAN">LAN — 192.168.10.0/24</option><option value="WAN">WAN — dış ağ</option></select></div><div class="field"><label for="protocol">Protokol</label><select id="protocol"><option value="TCP">TCP</option><option value="UDP">UDP</option><option value="ICMP">ICMP</option></select></div><div class="field"><label for="port">Hedef port</label><input id="port" inputmode="numeric" value="443" placeholder="443" /></div><div class="field"><label for="action">Aksiyon</label><select id="action"><option value="ALLOW">ALLOW — izin ver</option><option value="DENY">DENY — engelle</option></select></div><div class="field"><label for="description">Açıklama</label><input id="description" value="LAN web erişimi" placeholder="Kuralın amacı" /></div><div class="field full"><div class="check-row"><label class="check"><input type="checkbox" id="logging" checked /> Eşleşmeyi logla</label><label class="check"><input type="checkbox" id="enabled" checked /> Kuralı aktif başlat</label></div></div></div><div class="form-footer"><span class="helper">Değişiklik yalnızca simülasyona uygulanır.</span><button class="button primary" id="addRule">Kuralı kaydet</button></div></div><div class="traffic-test"><h3>Trafik testi</h3><p class="muted" style="font-size:12px">Kuralının beklenen trafiği etkilediğini doğrula.</p><div class="traffic-actions"><button class="button small" data-traffic="HTTPS">LAN → DMZ · HTTPS 443</button><button class="button small" data-traffic="SSH">LAN → DMZ · SSH 22</button><button class="button small" data-traffic="ICMP">LAN → DMZ · ICMP</button></div><div class="traffic-result" id="trafficResult"><div class="result-icon">?</div><div>Bir trafik türü seçtiğinde değerlendirme sonucu burada görünecek.</div></div></div></div>
+
+            <div class="view" id="view-logs"><div class="view-heading"><div><h2>Olay ve trafik logları</h2><p>Testin kanıtı burada görünür. Log satırını okuyup sonucu açıklamayı dene.</p></div><span class="status-badge" id="logCount">0 kayıt</span></div><div class="log-list" id="logList"><div class="empty">Henüz log yok. Kurallar ekranından bir trafik testi başlat.</div></div></div>
+
+            <div class="view" id="view-config"><div class="view-heading"><div><h2>Config yedeği</h2><p>Gerçek bir cihazda değişiklikten önce mevcut yapılandırmayı saklamak iyi bir alışkanlıktır.</p></div><span class="status-badge">Hazır</span></div><div class="mini-card"><h3>FW-TRAINING-01 / baseline</h3><p class="muted" style="font-size:13px">Son güvenli geri dönüş noktası: başlangıç politikası, üç arayüz, varsayılan engelleme.</p><button class="button small" id="backupBtn">Simülasyon yedeği oluştur</button><span class="muted" style="font-size:12px;margin-left:8px" id="backupStatus"></span></div><div class="hint-banner" style="margin-top:15px"><strong>Mülakat cümlesi:</strong> “Değişiklikten önce mevcut yapılandırmayı yedekler, küçük bir değişiklik yapar ve test sonrası geri dönüş yolunu korurum.”</div></div>
+          </div>
+        </section>
+      </section>
+
+      <aside class="coach" aria-label="Koç paneli">
+        <section class="panel coach-card"><p class="eyebrow">Canlı koç</p><h2>Sıradaki doğru hareket</h2><p class="coach-copy" id="coachText">Önce <strong>Arayüzler</strong> sekmesine git ve LAN ile DMZ ağlarını tanı.</p><hr class="coach-divider" /><div class="checkpoint"><div class="checkpoint-icon">◌</div><div><strong id="checkpointTitle">Ekranı keşfet</strong><span id="checkpointText">Kaynak ve hedef ağın nerede olduğunu bul.</span></div></div><div class="coach-actions"><button class="button small primary" id="coachAction">Arayüzleri aç</button><button class="button small ghost" id="hintSide">İpucu</button></div></section>
+        <section class="panel coach-card"><p class="eyebrow">Mülakatta anlat</p><div class="script">“Önce kaynak ve hedef ağları doğrularım. Gereken en dar trafiğe izin veririm, loglamayı açarım, sonra izinli ve engelli trafiği ayrı ayrı test ederim.”</div><button class="button small ghost" id="copyScript" style="margin-top:11px">Cümleyi kopyala</button></section>
+        <section class="panel coach-card"><p class="eyebrow">Sonraki senaryolar</p><div class="next-scenarios"><div class="scenario-item"><span>SSH yönetim erişimini sınırla</span><span>yakında</span></div><div class="scenario-item"><span>DNS ve DHCP akışını incele</span><span>yakında</span></div><div class="scenario-item"><span>NAC / WLAN olayını çöz</span><span>yakında</span></div></div></section>
+      </aside>
+    </main>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  </div>
+  <script>
+    (() => {
+      const initialTasks = [
+        { title: 'Arayüzleri incele', detail: 'LAN ve DMZ ağlarını bul', view: 'interfaces' },
+        { title: 'Kural ekranını aç', detail: 'Politika sırasını gör', view: 'rules' },
+        { title: 'HTTPS izin kuralı oluştur', detail: 'LAN → DMZ / TCP 443', view: 'rules' },
+        { title: 'İzinli trafiği test et', detail: 'HTTPS 443 başarılı olmalı', view: 'rules' },
+        { title: 'Logu doğrula', detail: 'ALLOW kaydını bul', view: 'logs' },
+        { title: 'Kuralı kapatıp tekrar test et', detail: 'Aynı trafik artık engellenmeli', view: 'rules' }
+      ];
+      let tasks = initialTasks.map(t => ({...t, done:false}));
+      let rules = [{ id:'000', enabled:true, source:'ANY', destination:'ANY', protocol:'ANY', port:'ANY', action:'DENY', logging:false, description:'Varsayılan engelleme' }];
+      let logs = [];
+      let testResult = null;
+      let lastView = 'overview';
+      let hintIndex = 0;
+      const hints = [
+        'Kaynak LAN, hedef DMZ olmalı. Trafik yönünü önce yüksek sesle söyle.',
+        'HTTPS, TCP üzerinde 443 numaralı portu kullanır. SSH veya ICMP seçme.',
+        'Kuralın çalıştığını yalnızca yeşil sonucu görerek değil, log satırını okuyarak da kanıtla.',
+        'Kuralı kapattığında aynı trafik artık varsayılan engellemeye düşmeli.'
+      ];
+      const taskList = document.getElementById('taskList');
+      const views = [...document.querySelectorAll('.view')];
+      const tabs = [...document.querySelectorAll('.nav-tab')];
+      const toast = document.getElementById('toast');
+      let toastTimer;
+      function showToast(message, tone='ok') { toast.textContent = message; toast.className = 'toast show'; if (tone==='bad') { toast.style.borderColor='rgba(255,143,135,.4)'; toast.style.background='#2a171b'; toast.style.color='var(--red)'; } else { toast.style.borderColor='rgba(120,229,200,.4)'; toast.style.background='#12231f'; toast.style.color='var(--teal)'; } clearTimeout(toastTimer); toastTimer=setTimeout(()=>toast.className='toast', 3000); }
+      function renderTasks() { taskList.innerHTML = tasks.map((t,i)=>`<div class="task ${t.done?'done':''} ${!t.done && (i===tasks.findIndex(x=>!x.done))?'active':''}"><span class="task-number">${t.done?'✓':i+1}</span><span><strong>${t.title}</strong><br /><small>${t.detail}</small></span></div>`).join(''); const done=tasks.filter(t=>t.done).length; document.getElementById('progressText').textContent=`${done} / ${tasks.length}`; document.getElementById('progressBar').style.width=`${Math.max(6,done/tasks.length*100)}%`; }
+      function complete(index) { if (tasks[index] && !tasks[index].done) { tasks[index].done=true; renderTasks(); if (tasks.every(t=>t.done)) { showToast('Senaryo tamamlandı — bunu mülakatta açıklayabilirsin.'); } } }
+      function openView(view) { lastView=view; views.forEach(v=>v.classList.toggle('active', v.id===`view-${view}`)); tabs.forEach(t=>t.classList.toggle('active', t.dataset.view===view)); if(view==='interfaces') complete(0); if(view==='rules') complete(1); updateCoach(); }
+      tabs.forEach(tab=>tab.addEventListener('click',()=>openView(tab.dataset.view)));
+      function renderRules() { document.getElementById('rulesBody').innerHTML = rules.map((r,idx)=>`<tr><td class="rule-id">${r.id}</td><td><span class="rule-state ${r.enabled?'':'off'}">${r.enabled?'Aktif':'Kapalı'}</span></td><td>${r.source}</td><td>${r.destination}</td><td>${r.protocol} / ${r.port}</td><td class="${r.action==='ALLOW'?'action-allow':'action-deny'}">${r.action}</td><td>${r.id==='000'?'<span class="muted">sistem</span>':`<button class="button small ${r.enabled?'danger':'primary'} toggle-rule" data-id="${r.id}">${r.enabled?'Kapat':'Aç'}</button>`}</td></tr>`).join(''); document.getElementById('ruleCount').textContent=rules.filter(r=>r.enabled).length; document.querySelectorAll('.toggle-rule').forEach(btn=>btn.addEventListener('click',()=>toggleRule(btn.dataset.id))); }
+      function toggleRule(id) { const rule=rules.find(r=>r.id===id); if(!rule)return; rule.enabled=!rule.enabled; renderRules(); showToast(rule.enabled?'Kural yeniden aktif edildi.':'Kural kapatıldı; aynı trafiği tekrar test et.'); if(!rule.enabled && tasks[3].done) { complete(5); } updateCoach(); }
+      function addRule() { const rule={ id:String(100+rules.length).padStart(3,'0'), enabled:document.getElementById('enabled').checked, source:document.getElementById('source').value, destination:document.getElementById('destination').value, protocol:document.getElementById('protocol').value, port:document.getElementById('port').value.trim()||'ANY', action:document.getElementById('action').value, logging:document.getElementById('logging').checked, description:document.getElementById('description').value.trim()||'İsimsiz kural' }; rules.unshift(rule); renderRules(); const correct=rule.enabled&&rule.source==='LAN'&&rule.destination==='DMZ'&&rule.protocol==='TCP'&&rule.port==='443'&&rule.action==='ALLOW'&&rule.logging; if(correct) { complete(2); showToast('Doğru kural oluşturuldu. Şimdi HTTPS trafiğini test et.'); } else { showToast('Kural kaydedildi; fakat senaryonun hedefi için alanları tekrar kontrol et.', 'bad'); } updateCoach(); }
+      function now(){ return new Date().toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit',second:'2-digit'}); }
+      function testTraffic(type) { const match=rules.find(r=>r.enabled && r.source==='LAN' && r.destination==='DMZ' && ((type==='HTTPS'&&r.protocol==='TCP'&&r.port==='443') || (type==='SSH'&&r.protocol==='TCP'&&r.port==='22') || (type==='ICMP'&&r.protocol==='ICMP'))); const allowed=!!match && match.action==='ALLOW'; const label={HTTPS:'TCP 443 / HTTPS',SSH:'TCP 22 / SSH',ICMP:'ICMP'}[type]; const entry={time:now(), type:allowed?'ALLOW':'DENY', detail:`LAN → DMZ · ${label}`, rule:match?`kural ${match.id}`:'default deny'}; logs.unshift(entry); testResult={type,allowed}; const el=document.getElementById('trafficResult'); el.className=`traffic-result ${allowed?'success':'blocked'}`; el.innerHTML=`<div class="result-icon">${allowed?'✓':'×'}</div><div><strong>${allowed?'İZİN VERİLDİ':'ENGELLENDİ'}</strong><br /><span>${entry.detail} · ${entry.rule}</span></div>`; document.getElementById('lastTest').textContent=allowed?'ALLOW':'DENY'; document.getElementById('lastTestDetail').textContent=label; renderLogs(); if(type==='HTTPS'&&allowed) { complete(3); showToast('HTTPS testi başarılı. Şimdi logu açıp kanıtı bul.'); } else if(type==='HTTPS'&&!allowed&&tasks[3].done===false) showToast('HTTPS hâlâ engelli; aktif kuralın alanlarını kontrol et.', 'bad'); if(type==='HTTPS'&&!allowed&&tasks[3].done) complete(5); updateCoach(); }
+      function renderLogs() { document.getElementById('logCount').textContent=`${logs.length} kayıt`; document.getElementById('logList').innerHTML=logs.length?logs.map(l=>`<div class="log-row"><span class="log-time">${l.time}</span><strong class="${l.type==='ALLOW'?'log-allow':'log-deny'}">${l.type}</strong><span>${l.detail}</span><span class="log-meta">${l.rule}</span></div>`).join(''):'<div class="empty">Henüz log yok. Kurallar ekranından bir trafik testi başlat.</div>'; }
+      function showHint() { const text=hints[hintIndex%hints.length]; hintIndex++; document.getElementById('coachText').innerHTML=`<strong>İpucu:</strong> ${text}`; showToast('İpucu açıldı. Önce kendin dene, sonra uygula.'); }
+      function updateCoach() { const next=tasks.findIndex(t=>!t.done); const map=[['Arayüzleri aç','Arayüzleri aç','Ekranı keşfet','Kaynak ve hedef ağın nerede olduğunu bul.'],['Kuralları aç','Kuralları aç','Politikayı incele','Kuralların yukarıdan aşağıya değerlendirildiğini gör.'],['Kural formuna git','Kurallar ekranında kal','Kuralı tasarla','LAN → DMZ, TCP 443, ALLOW ve log açık.'],['HTTPS testini çalıştır','Kurallar ekranında kal','Kontrol et','LAN → DMZ HTTPS 443 düğmesine bas.'],['Logları aç','Logları aç','Kanıtı bul','ALLOW kaydını aç ve hangi kuralın eşleştiğine bak.'],['Tekrar test et','Kurallar ekranında kal','Güvenli geri dönüşü gör','Kuralı kapat, aynı HTTPS testini yeniden çalıştır.']]; if(next===-1){document.getElementById('coachText').innerHTML='<strong>Harika.</strong> Senaryoyu baştan sona tamamladın. Şimdi işlemi mülakatta anlatmayı dene.';document.getElementById('checkpointTitle').textContent='Senaryo tamamlandı';document.getElementById('checkpointText').textContent='İstersen sıfırlayıp akışı tekrar yap.';document.getElementById('coachAction').textContent='Başa dön';document.getElementById('coachAction').onclick=()=>resetLab();return;} const m=map[next];document.getElementById('coachText').innerHTML=`Sıradaki adım: <strong>${m[0]}</strong>. ${m[1]}`;document.getElementById('checkpointTitle').textContent=m[2];document.getElementById('checkpointText').textContent=m[3]; const action=document.getElementById('coachAction');action.textContent=m[0];action.onclick=()=>{if(next===0)openView('interfaces');else if(next===1||next===2||next===3||next===5)openView('rules');else if(next===4)openView('logs');}; }
+      function resetLab() { tasks=initialTasks.map(t=>({...t,done:false})); rules=[{ id:'000', enabled:true, source:'ANY', destination:'ANY', protocol:'ANY', port:'ANY', action:'DENY', logging:false, description:'Varsayılan engelleme' }];logs=[];testResult=null;hintIndex=0;document.getElementById('lastTest').textContent='—';document.getElementById('lastTestDetail').textContent='Henüz trafik üretilmedi';document.getElementById('trafficResult').className='traffic-result';document.getElementById('trafficResult').innerHTML='<div class="result-icon">?</div><div>Bir trafik türü seçtiğinde değerlendirme sonucu burada görünecek.</div>';renderTasks();renderRules();renderLogs();openView('overview');showToast('Senaryo başlangıç durumuna döndürüldü.');}
+      document.getElementById('addRule').addEventListener('click',addRule); document.getElementById('hintBtn').addEventListener('click',showHint); document.getElementById('hintSide').addEventListener('click',showHint); document.getElementById('resetBtn').addEventListener('click',resetLab); document.getElementById('resetTop').addEventListener('click',resetLab); document.querySelectorAll('[data-traffic]').forEach(btn=>btn.addEventListener('click',()=>testTraffic(btn.dataset.traffic))); document.getElementById('backupBtn').addEventListener('click',()=>{document.getElementById('backupStatus').textContent=`Yedek oluşturuldu · ${now()}`;showToast('Simülasyon yedeği oluşturuldu.');}); document.getElementById('copyScript').addEventListener('click',async()=>{const text='Önce kaynak ve hedef ağları doğrularım. Gereken en dar trafiğe izin veririm, loglamayı açarım, sonra izinli ve engelli trafiği ayrı ayrı test ederim.';try{await navigator.clipboard.writeText(text);showToast('Mülakat cümlesi panoya kopyalandı.');}catch(e){showToast(text);}});
+      renderTasks();renderRules();renderLogs();updateCoach();
+    })();
+  </script>
+</body>
+</html>
